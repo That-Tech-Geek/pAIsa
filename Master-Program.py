@@ -31,16 +31,57 @@ if service_type == "Mergers and Acquisition Advisory Services":
     st.title("Financial Data Analysis and NLP News Sentiment")
     
     # Get user input for ticker symbols
-    st.header("Enter Ticker Symbols")
-    acquirer_ticker = st.text_input("Acquirer Ticker")
-    acquiree_ticker = st.text_input("Acquiree Ticker")
+    # Input fields
+    acquirer_ticker = st.text_input("Enter acquirer's stock ticker:")
+    acquirer_exchange = st.selectbox("Select acquirer's exchange:", list(exchange_suffixes.keys()))
     
-    # Download financial data from Yahoo Finance
-    if st.button("Download Financial Data"):
-        # Download financial data from Yahoo Finance
-        acquirer_data = yf.download(acquirer_ticker, period="max")
-        acquiree_data = yf.download(acquiree_ticker, period="max")
+    acquiree_ticker = st.text_input("Enter acquiree's stock ticker:")
+    acquiree_exchange = st.selectbox("Select acquiree's exchange:", list(exchange_suffixes.keys()))
+    
+    date_range = st.selectbox("Select date range:", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"])
+    
+    if date_range == "1d":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=1)
+        end_date = pd.to_datetime('today')
+    elif date_range == "5d":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=5)
+        end_date = pd.to_datetime('today')
+    elif date_range == "1mo":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=30)
+        end_date = pd.to_datetime('today')
+    elif date_range == "3mo":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=90)
+        end_date = pd.to_datetime('today')
+    elif date_range == "6mo":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=180)
+        end_date = pd.to_datetime('today')
+    elif date_range == "1y":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=365)
+        end_date = pd.to_datetime('today')
+    elif date_range == "2y":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=730)
+        end_date = pd.to_datetime('today')
+    elif date_range == "5y":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=1825)
+        end_date = pd.to_datetime('today')
+    elif date_range == "10y":
+        start_date = pd.to_datetime('today') - pd.Timedelta(days=3650)
+        end_date = pd.to_datetime('today')
+    elif date_range == "ytd":
+        start_date = pd.to_datetime(f'{pd.to_datetime("today").year}-01-01')
+        end_date = pd.to_datetime('today')
+    elif date_range == "max":
+        start_date = pd.to_datetime('1924-01-01')
+        end_date = pd.to_datetime('today')
+    
+    if acquirer_ticker and acquirer_exchange and acquiree_ticker and acquiree_exchange and start_date and end_date:
+        acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
+        acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
         
+        acquirer_data = fetch_data(acquirer_ticker_with_suffix, start=start_date, end=end_date)
+        acquiree_data = fetch_data(acquiree_ticker_with_suffix, start=start_date, end=end_date)
+    else:
+        st.write("Enter all the data!")
         # Calculate estimated debt volume and other metrics
         acquirer_data['Estimated Debt Volume'] = (acquirer_data['Close'] - acquirer_data['Adj Close']) * acquirer_data['Volume']
         acquirer_data['Average Total Assets'] = acquirer_data['Adj Close'] * acquirer_data['Volume']
