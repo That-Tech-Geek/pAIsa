@@ -5,7 +5,6 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 import gazpacho
-from newspaper.article import ArticleException
 
 st.title("Welcome to pAIsa, the Indian AI Investment Bank!")
 
