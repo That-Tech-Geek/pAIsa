@@ -188,11 +188,15 @@ if service_type == "Mergers and Acquisition Advisory Services":
             compatibility_score += abs(acquirer_metric - acquiree_metric)
         
         st.write("Compatibility Score:", compatibility_score)
+                
         try:
             html = gazpacho.get(news_url)
             soup = gazpacho.Soup(html)
-            article_content = soup.find("div.article-body", mode="first")
-            article_text = article_content.text
+            article_text = ""
+            
+            # Find the article content using a CSS selector
+            for paragraph in soup.find("p", mode="all"):
+                article_text += paragraph.text + " "
             
             # Tokenize the text
             tokens = word_tokenize(article_text)
