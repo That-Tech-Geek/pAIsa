@@ -38,71 +38,45 @@ if service_type == "Mergers and Acquisition Advisory Services":
     
     # Download financial data from Yahoo Finance
     if st.button("Download Financial Data"):
-        acquirer_info = yf.Ticker(acquirer_ticker).info
-        acquiree_info = yf.Ticker(acquiree_ticker).info
+        acquirer_data = yf.download(acquirer_ticker, period="1y")
+        acquiree_data = yf.download(acquiree_ticker, period="1y")
         
-        # Display stock information as a dataframe
-        country = acquirer_info.get('country', 'N/A')
-        sector = acquirer_info.get('sector', 'N/A')
-        industry = acquirer_info.get('industry', 'N/A')
-        market_cap = acquirer_info.get('marketCap', 'N/A')
-        ent_value = acquirer_info.get('enterpriseValue', 'N/A')
-        employees = acquirer_info.get('fullTimeEmployees', 'N/A')
+        # Calculate estimated debt volume and other metrics
+        acquirer_data['Estimated Debt Volume'] = (acquirer_data['Close'] - acquirer_data['Adj Close']) * acquirer_data['Volume']
+        acquiree_data['Estimated Debt Volume'] = (acquiree_data['Close'] - acquiree_data['Adj Close']) * acquiree_data['Volume']
         
-        stock_info = [
-            ("Stock Info", "Value"),
-            ("Country", country),
-            ("Sector", sector),
-            ("Industry", industry),
-            ("Market Cap", format_value(market_cap)),
-            ("Enterprise Value", format_value(ent_value)),
-            ("Employees", employees)
-        ]
+        # Calculate various ratios
+        acquirer_data['Debt-to-Equity Ratio'] = acquirer_data['Estimated Debt Volume'] / acquirer_data['Adj Close']
+        acquiree_data['Debt-to-Equity Ratio'] = acquiree_data['Estimated Debt Volume'] / acquiree_data['Adj Close']
         
-        df = pd.DataFrame(stock_info[1:], columns=stock_info[0])
-        st.dataframe(df, width=400, hide_index=True)
+        acquirer_data['Current Ratio'] = acquirer_data['Adj Close'] / acquirer_data['Estimated Debt Volume']
+        acquiree_data['Current Ratio'] = acquiree_data['Adj Close'] / acquiree_data['Estimated Debt Volume']
         
-        # Display price information as a dataframe
-        current_price = acquirer_info.get('currentPrice', 'N/A')
-        prev_close = acquirer_info.get('previousClose', 'N/A')
-        day_high = acquirer_info.get('dayHigh', 'N/A')
-        day_low = acquirer_info.get('dayLow', 'N/A')
-        ft_week_high = acquirer_info.get('fiftyTwoWeekHigh', 'N/A')
-        ft_week_low = acquirer_info.get('fiftyTwoWeekLow', 'N/A')
+        acquirer_data['Interest Coverage Ratio'] = acquirer_data['Adj Close'] / (acquirer_data['Estimated Debt Volume'] * 0.05)
+        acquiree_data['Interest Coverage Ratio'] = acquiree_data['Adj Close'] / (acquiree_data['Estimated Debt Volume'] * 0.05)
         
-        price_info = [
-            ("Price Info", "Value"),
-            ("Current Price", f"${current_price:.2f}"),
-            ("Previous Close", f"${prev_close:.2f}"),
-            ("Day High", f"${day_high:.2f}"),
-            ("Day Low", f"${day_low:.2f}"),
-            ("52 Week High", f"${ft_week_high:.2f}"),
-            ("52 Week Low", f"${ft_week_low:.2f}")
-        ]
+        #... calculate other metrics...
         
-        df = pd.DataFrame(price_info[1:], columns=price_info[0])
-        st.dataframe(df, width=400, hide_index=True)
+        # Plot comparison of metrics
+        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+        sns.lineplot(x=acquirer_data.index, y=acquirer_data['Debt-to-Equity Ratio'], ax=ax[0], label=acquirer_ticker)
+        sns.lineplot(x=acquiree_data.index, y=acquiree_data['Debt-to-Equity Ratio'], ax=ax[0], label=acquiree_ticker)
+        ax[0].set_title("Debt-to-Equity Ratio")
         
-        # Display business metrics as a dataframe
-        forward_eps = acquirer_info.get('forwardEps', 'N/A')
-        forward_pe = acquirer_info.get('forwardPE', 'N/A')
-        peg_ratio = acquirer_info.get('pegRatio', 'N/A')
-        dividend_rate = acquirer_info.get('dividendRate', 'N/A')
-        dividend_yield = acquirer_info.get('dividendYield', 'N/A')
-        recommendation = acquirer_info.get('recommendationKey', 'N/A')
+        sns.lineplot(x=acquirer_data.index, y=acquirer_data['Current Ratio'], ax=ax[1], label=acquirer_ticker)
+        sns.lineplot(x=acquiree_data.index, y=acquiree_data['Current Ratio'], ax=ax[1], label=acquiree_ticker)
+        ax[1].set_title("Current Ratio")
         
-        biz_metrics = [
-            ("Business Metrics", "Value"),
-            ("EPS (FWD)", f"{forward_eps:.2f}"),
-            ("P/E (FWD)", f"{forward_pe:.2f}"),
-            ("PEG Ratio", f"{peg_ratio:.2f}"),
-            ("Div Rate (FWD)", f"${dividend_rate:.2f}"),
-            ("Div Yield (FWD)", f"{dividend_yield * 100:.2f}%"),
-            ("Recommendation", recommendation.capitalize())
-        ]
+        st.pyplot(fig)
         
-        df = pd.DataFrame(biz_metrics[1:], columns=biz_metrics[0])
-        st.dataframe(df, width=400, hide_index=True)
+        # Calculate compatibility score
+        compatibility_score = 0
+        for metric in ['Debt-to-Equity Ratio', 'Current Ratio', 'Interest Coverage Ratio',...]:
+            acquirer_metric = acquirer_data[metric].mean()
+            acquiree_metric = acquiree_data[metric].mean()
+            compatibility_score += abs(acquirer_metric - acquiree_metric)
+        
+        st.write("Compatibility Score:", compatibility_score)
         
         # Analyze news articles using NLP
         st.header("News Sentiment Analysis")
