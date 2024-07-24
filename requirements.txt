@@ -1,4 +1,4 @@
 streamlit
 yfinance
 nltk
-newspaper
+gazpahco
