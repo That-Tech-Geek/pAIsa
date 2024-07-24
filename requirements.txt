@@ -2,3 +2,4 @@ streamlit
 yfinance
 nltk
 gazpacho
+matplotlib
