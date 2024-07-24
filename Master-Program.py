@@ -188,7 +188,7 @@ if service_type == "Mergers and Acquisition Advisory Services":
             compatibility_score += abs(acquirer_metric - acquiree_metric)
         
         st.write("Compatibility Score:", compatibility_score)
-            try:
+        try:
             html = gazpacho.get(news_url)
             soup = gazpacho.Soup(html)
             article_content = soup.find("div.article-body", mode="first")
