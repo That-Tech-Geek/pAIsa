@@ -18,7 +18,7 @@ service_type = st.selectbox("Select a service type:", [
     "Financial Planning Services",
     "Stock Data Pulling Services"
 ])
-if service_type = "Mergers and Acquisition Advisory Services":
+if service_type == "Mergers and Acquisition Advisory Services":
     import streamlit as st
     import yfinance as yf
     import pandas as pd
