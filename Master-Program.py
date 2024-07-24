@@ -382,17 +382,17 @@ if service_type == "Mergers and Acquisition Advisory Services":
         acquiree_data['Fixed Asset Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / acquiree_data['Volume'] * (acquiree_data['Open'] + acquiree_data['Close']) / 2
         acquiree_data['Capital Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / (acquiree_data['Volume'] + acquiree_data['Estimated Debt Volume'])
        
-        # Plot comparison of metrics
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-        sns.lineplot(x=acquirer_data.index, y=acquirer_data['Debt-to-Equity Ratio'], ax=ax[0], label=acquirer_ticker)
-        sns.lineplot(x=acquiree_data.index, y=acquiree_data['Debt-to-Equity Ratio'], ax=ax[0], label=acquiree_ticker)
-        ax[0].set_title("Debt-to-Equity Ratio")
-        
-        sns.lineplot(x=acquirer_data.index, y=acquirer_data['Current Ratio'], ax=ax[1], label=acquirer_ticker)
-        sns.lineplot(x=acquiree_data.index, y=acquiree_data['Current Ratio'], ax=ax[1], label=acquiree_ticker)
-        ax[1].set_title("Current Ratio")
-        
-        st.pyplot(fig)
+        # Plot each column
+        for column in acquirer_data.columns:
+            if column != 'Date':
+                plt.figure(figsize=(10, 6))
+                plt.plot(acquirer_data['Date'], acquirer_data[column], label='Acquirer', color='red')
+                plt.plot(acquiree_data['Date'], acquiree_data[column], label='Acquiree', color='blue')
+                plt.title(column)
+                plt.xlabel('Date')
+                plt.ylabel(column)
+                plt.legend()
+                st.pyplot(plt)
         
         # Calculate compatibility score
         compatibility_score = 0
