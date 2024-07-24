@@ -4,7 +4,7 @@ import pandas as pd
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
-import newspaper
+import gazpacho
 from newspaper.article import ArticleException
 
 st.title("Welcome to pAIsa, the Indian AI Investment Bank!")
@@ -188,39 +188,38 @@ if service_type == "Mergers and Acquisition Advisory Services":
             compatibility_score += abs(acquirer_metric - acquiree_metric)
         
         st.write("Compatibility Score:", compatibility_score)
-        
             try:
-                article = newspaper.Article(url=news_url)
-                article.download()
-                article.parse()
-                
-                # Tokenize the text
-                tokens = word_tokenize(article.text)
-                
-                # Remove stopwords
-                stop_words = set(stopwords.words('english'))
-                tokens = [token for token in tokens if token.lower() not in stop_words]
-                
-                # Calculate sentiment score
-                sia = SentimentIntensityAnalyzer()
-                sentiment_score = sia.polarity_scores(' '.join(tokens))
-                
-                # Display sentiment score
-                st.write("Sentiment Score:")
-                st.write(f"Positive: {sentiment_score['pos']:.2f}")
-                st.write(f"Negative: {sentiment_score['neg']:.2f}")
-                st.write(f"Neutral: {sentiment_score['neu']:.2f}")
-                st.write(f"Compound: {sentiment_score['compound']:.2f}")
-                
-                # Determine sentiment
-                if sentiment_score['compound'] > 0.05:
-                    sentiment = "Positive"
-                elif sentiment_score['compound'] < -0.05:
-                    sentiment = "Negative"
-                else:
-                    sentiment = "Neutral"
-                
-                st.write(f"Overall Sentiment: {sentiment}")
+            html = gazpacho.get(news_url)
+            soup = gazpacho.Soup(html)
+            article_content = soup.find("div.article-body", mode="first")
+            article_text = article_content.text
             
-            except Exception as e:
-                st.error("Error parsing news article:", e)
+            # Tokenize the text
+            tokens = word_tokenize(article_text)
+            
+            # Remove stopwords
+            stop_words = set(stopwords.words('english'))
+            tokens = [token for token in tokens if token.lower() not in stop_words]
+            
+            # Calculate sentiment score
+            sia = SentimentIntensityAnalyzer()
+            sentiment_score = sia.polarity_scores(' '.join(tokens))
+            
+            # Display sentiment score
+            st.write("Sentiment Score:")
+            st.write(f"Positive: {sentiment_score['pos']:.2f}")
+            st.write(f"Negative: {sentiment_score['neg']:.2f}")
+            st.write(f"Neutral: {sentiment_score['neu']:.2f}")
+            st.write(f"Compound: {sentiment_score['compound']:.2f}")
+            
+            # Determine sentiment
+            if sentiment_score['compound'] > 0.05:
+                sentiment = "Positive"
+            elif sentiment_score['compound'] < -0.05:
+                sentiment = "Negative"
+            else:
+                sentiment = "Neutral"
+            
+            st.write(f"Overall Sentiment: {sentiment}")
+        except Exception as e:
+            st.write("Error:", e)
