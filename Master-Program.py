@@ -276,15 +276,12 @@ if service_type == "Mergers and Acquisition Advisory Services":
     elif date_range == "max":
         start_date = pd.to_datetime('1924-01-01')
         end_date = pd.to_datetime('today')
-    
+    def fetch_data(ticker, start, end):
+        data = yf.download(ticker, start=start, end=end, progress=False)
+        return data
     if acquirer_ticker and acquirer_exchange and acquiree_ticker and acquiree_exchange and start_date and end_date:
-            acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
-            acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
-            
-            def fetch_data(ticker, start, end):
-                data = yf.download(ticker, start=start, end=end, progress=False)
-                return data
-        
+        acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
+        acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
         acquirer_data = fetch_data(acquirer_ticker_with_suffix, start=start_date, end=end_date)
         acquiree_data = fetch_data(acquiree_ticker_with_suffix, start=start_date, end=end_date)
     else:
