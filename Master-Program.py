@@ -1,3 +1,12 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize, sent_tokenize
+from newspaper import Article
+from newspaper.article import ArticleException
+
 st.title("Welcome to pAIsa, the Indian AI Investment Bank!")
 
 # Create a dropdown menu
@@ -19,15 +28,6 @@ service_type = st.selectbox("Select a service type:", [
     "Stock Data Pulling Services"
 ])
 if service_type == "Mergers and Acquisition Advisory Services":
-    import streamlit as st
-    import yfinance as yf
-    import pandas as pd
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    from nltk.corpus import stopwords
-    from nltk.tokenize import word_tokenize, sent_tokenize
-    from newspaper import Article
-    from newspaper.article import ArticleException
-    
     # Set up the Streamlit app
     st.title("Financial Data Analysis and NLP News Sentiment")
     
