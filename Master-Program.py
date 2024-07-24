@@ -231,213 +231,183 @@ if service_type == "Mergers and Acquisition Advisory Services":
     }
 
     # Set up the Streamlit app
-    st.title("Financial Data Analysis and NLP News Sentiment")
+st.title("Financial Data Analysis and NLP News Sentiment")
+
+# Get user input for ticker symbols
+acquirer_ticker = st.text_input("Enter acquirer's stock ticker:")
+acquirer_exchange = st.selectbox("Select acquirer's exchange:", list(exchange_suffixes.keys()))
+
+acquiree_ticker = st.text_input("Enter acquiree's stock ticker:")
+acquiree_exchange = st.selectbox("Select acquiree's exchange:", list(exchange_suffixes.keys()))
+
+date_range = st.selectbox("Select date range:", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"])
+
+# Define date ranges
+if date_range == "1d":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=1)
+elif date_range == "5d":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=5)
+elif date_range == "1mo":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=30)
+elif date_range == "3mo":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=90)
+elif date_range == "6mo":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=180)
+elif date_range == "1y":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=365)
+elif date_range == "2y":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=730)
+elif date_range == "5y":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=1825)
+elif date_range == "10y":
+    start_date = pd.to_datetime('today') - pd.Timedelta(days=3650)
+elif date_range == "max":
+    start_date = pd.to_datetime('1924-01-01')
+end_date = pd.to_datetime('today')
+
+# Function to fetch data from yfinance
+def fetch_data(ticker, start, end):
+    data = yf.download(ticker, start=start, end=end, progress=False)
+    return data
+
+# Fetch data if tickers and exchanges are provided
+if acquirer_ticker and acquirer_exchange and acquiree_ticker and acquiree_exchange:
+    acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
+    acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
+    acquirer_data = fetch_data(acquirer_ticker_with_suffix, start=start_date, end=end_date)
+    acquiree_data = fetch_data(acquiree_ticker_with_suffix, start=start_date, end=end_date)
+else:
+    st.write("Enter all the data!")
+
+# Calculate estimated debt volume and other metrics
+def calculate_metrics(data):
+    data['Estimated Debt Volume'] = (data['Close'] - data['Adj Close']) * data['Volume']
+    data['Average Total Assets'] = data['Adj Close'] * data['Volume']
+    data['Asset Turnover Ratio'] = data['Volume'] / data['Average Total Assets']
+    data['EBIT'] = (data['Volume'] * data['Close']) - (data['Volume'] * data['Close']) - ((data['Volume'] * data['Close']) * (data['Close'] - data['Open']) / data['Volume'])
+    data['Interest Rate'] = 0.08
+    data['Corporate Tax'] = 0.235
     
-    # Get user input for ticker symbols
-    # Input fields
-    acquirer_ticker = st.text_input("Enter acquirer's stock ticker:")
-    acquirer_exchange = st.selectbox("Select acquirer's exchange:", list(exchange_suffixes.keys()))
+    # Calculate various ratios
+    data['Debt-to-Equity Ratio'] = data['Estimated Debt Volume'] / data['Adj Close']
+    data['Current Ratio'] = data['Adj Close'] / data['Estimated Debt Volume']
+    data['Interest Coverage Ratio'] = data['Adj Close'] / (data['Estimated Debt Volume'] * 0.05)
+    data['Debt-to-Capital Ratio'] = data['Estimated Debt Volume'] / (data['Adj Close'] + data['Estimated Debt Volume'])
+    data['Price-to-Earnings Ratio'] = data['Close'] / data['Adj Close']
+    data['Price-to-Book Ratio'] = data['Close'] / data['Adj Close']
+    data['Return on Equity (ROE)'] = (data['Close'] - data['Open']) / data['Adj Close']
+    data['Return on Assets (ROA)'] = (data['Close'] - data['Open']) / data['Volume']
+    data['Earnings Yield'] = data['Adj Close'] / data['Close']
+    data['Dividend Yield'] = data['Adj Close'] / data['Close']
+    data['Price-to-Sales Ratio'] = data['Close'] / data['Volume']
+    data['Enterprise Value-to-EBITDA Ratio'] = (data['Close'] * data['Volume']) / (data['Adj Close'] * 0.05)
+    data['Inventory Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
+    data['Receivables Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
+    data['Payables Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
+    data['Cash Conversion Cycle'] = (data['Close'] - data['Open']) / data['Volume']
+    data['Debt Service Coverage Ratio'] = data['Adj Close'] / (data['Estimated Debt Volume'] * 0.05)
+    data['Return on Invested Capital (ROIC)'] = (data['Close'] - data['Open']) / (data['Adj Close'] + data['Estimated Debt Volume'])
+    data['Return on Common Equity (ROCE)'] = (data['Close'] - data['Open']) / data['Adj Close']
+    data['Gross Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
+    data['Operating Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
+    data['Net Profit Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
+    data['Debt to Assets Ratio'] = data['Estimated Debt Volume'] / data['Asset Turnover Ratio']
+    data['Equity Ratio'] = data['Volume'] / data['Asset Turnover Ratio']
+    data['Financial Leverage Ratio'] = data['Asset Turnover Ratio'] / data['Volume']
+    data['Proprietary Ratio'] = data['Volume'] / data['Asset Turnover Ratio']
+    data['Capital Gearing Ratio'] = data['Estimated Debt Volume'] / data['Volume']
+    data['Interest Coverage Ratio'] = data['EBIT'] / (data['Estimated Debt Volume'] * data['Interest Rate'])
+    data['DSCR'] = (data['Adj Close'] * data['Volume']) / (data['Estimated Debt Volume'])
+    data['Gross Profit Ratio'] = (data['Adj Close'] * data['Volume']) - (data['Close'] * data['Volume']) / (data['Adj Close'] * data['Volume'])
+    data['Net Profit Ratio'] = (data['Close'] * data['Volume']) * data['Corporate Tax'] / (data['Adj Close'] * data['Volume'])
+    data['ROI'] = (data['Close'] * data['Volume']) * data['Corporate Tax'] / data['High']
+    data['EBITDA Margin'] = data['EBIT'] / (data['Adj Close'] * data['Volume'])
+    data['Fixed Asset Turnover Ratio'] = (data['Adj Close'] * data['Volume']) / data['Volume'] * (data['Open'] + data['Close']) / 2
+    data['Capital Turnover Ratio'] = (data['Adj Close'] * data['Volume']) / (data['Volume'] + data['Estimated Debt Volume'])
+    return data
+
+# Apply metric calculations
+if acquirer_data is not None and acquiree_data is not None:
+    acquirer_data = calculate_metrics(acquirer_data)
+    acquiree_data = calculate_metrics(acquiree_data)
     
-    acquiree_ticker = st.text_input("Enter acquiree's stock ticker:")
-    acquiree_exchange = st.selectbox("Select acquiree's exchange:", list(exchange_suffixes.keys()))
+    # Plot each column
+    for column in acquirer_data.columns:
+        if column != 'Date':
+            plt.figure(figsize=(10, 6))
+            plt.plot(acquirer_data.index, acquirer_data[column], label='Acquirer', color='red')
+            plt.plot(acquiree_data.index, acquiree_data[column], label='Acquiree', color='blue')
+            plt.title(column)
+            plt.xlabel('Date')
+            plt.ylabel(column)
+            plt.legend()
+            st.pyplot(plt)
     
-    date_range = st.selectbox("Select date range:", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"])
+    # Calculate compatibility score
+    compatibility_score = 0
+    metrics = ['Debt-to-Equity Ratio', 'Current Ratio', 'Interest Coverage Ratio', 'Debt-to-Capital Ratio', 'Price-to-Earnings Ratio', 'Price-to-Book Ratio', 'Return on Equity (ROE)', 'Return on Assets (ROA)', 'Earnings Yield', 'Dividend Yield', 'Price-to-Sales Ratio', 'Enterprise Value-to-EBITDA Ratio', 'Inventory Turnover Ratio', 'Receivables Turnover Ratio', 'Payables Turnover Ratio', 'Cash Conversion Cycle', 'Debt Service Coverage Ratio', 'Return on Invested Capital (ROIC)', 'Return on Common Equity (ROCE)', 'Gross Margin Ratio', 'Operating Margin Ratio', 'Net Profit Margin Ratio', 'Debt to Assets Ratio', 'Equity Ratio', 'Financial Leverage Ratio', 'Proprietary Ratio', 'Capital Gearing Ratio', 'Interest Coverage Ratio', 'DSCR', 'Gross Profit Ratio', 'Net Profit Ratio', 'ROI', 'EBITDA Margin', 'Fixed Asset Turnover Ratio', 'Capital Turnover Ratio']
     
-    if date_range == "1d":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=1)
-        end_date = pd.to_datetime('today')
-    elif date_range == "5d":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=5)
-        end_date = pd.to_datetime('today')
-    elif date_range == "1mo":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=30)
-        end_date = pd.to_datetime('today')
-    elif date_range == "3mo":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=90)
-        end_date = pd.to_datetime('today')
-    elif date_range == "6mo":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=180)
-        end_date = pd.to_datetime('today')
-    elif date_range == "1y":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=365)
-        end_date = pd.to_datetime('today')
-    elif date_range == "2y":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=730)
-        end_date = pd.to_datetime('today')
-    elif date_range == "5y":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=1825)
-        end_date = pd.to_datetime('today')
-    elif date_range == "10y":
-        start_date = pd.to_datetime('today') - pd.Timedelta(days=3650)
-        end_date = pd.to_datetime('today')
-    elif date_range == "ytd":
-        start_date = pd.to_datetime(f'{pd.to_datetime("today").year}-01-01')
-        end_date = pd.to_datetime('today')
-    elif date_range == "max":
-        start_date = pd.to_datetime('1924-01-01')
-        end_date = pd.to_datetime('today')
-    def fetch_data(ticker, start, end):
-        data = yf.download(ticker, start=start, end=end, progress=False)
-        return data
-    if acquirer_ticker and acquirer_exchange and acquiree_ticker and acquiree_exchange and start_date and end_date:
-        acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
-        acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
-        acquirer_data = fetch_data(acquirer_ticker_with_suffix, start=start_date, end=end_date)
-        acquiree_data = fetch_data(acquiree_ticker_with_suffix, start=start_date, end=end_date)
-    else:
-        st.write("Enter all the data!")
-        # Calculate estimated debt volume and other metrics
-        acquirer_data['Estimated Debt Volume'] = (acquirer_data['Close'] - acquirer_data['Adj Close']) * acquirer_data['Volume']
-        acquirer_data['Average Total Assets'] = acquirer_data['Adj Close'] * acquirer_data['Volume']
-        acquirer_data['Asset Turnover Ratio'] = acquirer_data['Volume'] / acquirer_data['Average Total Assets']
-        acquirer_data['EBIT'] = (acquirer_data['Volume'] * acquirer_data['Close']) - (acquirer_data['Volume'] * acquirer_data['Close']) - ((acquirer_data['Volume'] * acquirer_data['Close']) * (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume'])
-        acquirer_data['Interest Rate'] = 0.08
-        acquirer_data['Corporate Tax'] = 0.235
-        
-        # Calculate various ratios
-        acquirer_data['Debt-to-Equity Ratio'] = acquirer_data['Estimated Debt Volume'] / acquirer_data['Adj Close']
-        acquirer_data['Current Ratio'] = acquirer_data['Adj Close'] / acquirer_data['Estimated Debt Volume']
-        acquirer_data['Interest Coverage Ratio'] = acquirer_data['Adj Close'] / (acquirer_data['Estimated Debt Volume'] * 0.05)
-        acquirer_data['Debt-to-Capital Ratio'] = acquirer_data['Estimated Debt Volume'] / (acquirer_data['Adj Close'] + acquirer_data['Estimated Debt Volume'])
-        acquirer_data['Price-to-Earnings Ratio'] = acquirer_data['Close'] / acquirer_data['Adj Close']
-        acquirer_data['Price-to-Book Ratio'] = acquirer_data['Close'] / acquirer_data['Adj Close']
-        acquirer_data['Return on Equity (ROE)'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Adj Close']
-        acquirer_data['Return on Assets (ROA)'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume']
-        acquirer_data['Earnings Yield'] = acquirer_data['Adj Close'] / acquirer_data['Close']
-        acquirer_data['Dividend Yield'] = acquirer_data['Adj Close'] / acquirer_data['Close']
-        acquirer_data['Price-to-Sales Ratio'] = acquirer_data['Close'] / acquirer_data['Volume']
-        acquirer_data['Enterprise Value-to-EBITDA Ratio'] = (acquirer_data['Close'] * acquirer_data['Volume']) / (acquirer_data['Adj Close'] * 0.05)
-        acquirer_data['Asset Turnover Ratio'] = acquirer_data['Volume'] / acquirer_data['Adj Close']
-        acquirer_data['Inventory Turnover Ratio'] = acquirer_data['Volume'] / (acquirer_data['Close'] - acquirer_data['Open'])
-        acquirer_data['Receivables Turnover Ratio'] = acquirer_data['Volume'] / (acquirer_data['Close'] - acquirer_data['Open'])
-        acquirer_data['Payables Turnover Ratio'] = acquirer_data['Volume'] / (acquirer_data['Close'] - acquirer_data['Open'])
-        acquirer_data['Cash Conversion Cycle'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume']
-        acquirer_data['Interest Coverage Ratio'] = acquirer_data['Adj Close'] / (acquirer_data['Estimated Debt Volume'] * 0.05)
-        acquirer_data['Debt Service Coverage Ratio'] = acquirer_data['Adj Close'] / (acquirer_data['Estimated Debt Volume'] * 0.05)
-        acquirer_data['Return on Invested Capital (ROIC)'] = (acquirer_data['Close'] - acquirer_data['Open']) / (acquirer_data['Adj Close'] + acquirer_data['Estimated Debt Volume'])
-        acquirer_data['Return on Common Equity (ROCE)'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Adj Close']
-        acquirer_data['Gross Margin Ratio'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume']
-        acquirer_data['Operating Margin Ratio'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume']
-        acquirer_data['Net Profit Margin Ratio'] = (acquirer_data['Close'] - acquirer_data['Open']) / acquirer_data['Volume']
-        acquirer_data['Debt to Assets Ratio'] = acquirer_data['Estimated Debt Volume'] / acquirer_data['Asset Turnover Ratio']
-        acquirer_data['Equity Ratio'] = acquirer_data['Volume'] / acquirer_data['Asset Turnover Ratio']
-        acquirer_data['Financial Leverage Ratio'] = acquirer_data['Asset Turnover Ratio'] / acquirer_data['Volume']
-        acquirer_data['Proprietary Ratio'] = acquirer_data['Volume'] / acquirer_data['Asset Turnover Ratio']
-        acquirer_data['Capital Gearing Ratio'] = acquirer_data['Estimated Debt Volume'] / acquirer_data['Volume']
-        acquirer_data['Interest Coverage Ratio'] = acquirer_data['EBIT'] / (acquirer_data['Estimated Debt Volume'] * acquirer_data['Interest Rate'])
-        acquirer_data['DSCR'] = (acquirer_data['Adj Close'] * acquirer_data['Volume']) / (acquirer_data['Estimated Debt Volume'])
-        acquirer_data['Gross Profit Ratio'] = (acquirer_data['Adj Close'] * acquirer_data['Volume']) - (acquirer_data['Close'] * acquirer_data['Volume']) / (acquirer_data['Adj Close'] * acquirer_data['Volume'])
-        acquirer_data['Net Profit Ratio'] = (acquirer_data['Close'] * acquirer_data['Volume']) * acquirer_data['Corporate Tax'] / (acquirer_data['Adj Close'] * acquirer_data['Volume'])
-        acquirer_data['ROI'] = (acquirer_data['Close'] * acquirer_data['Volume']) * acquirer_data['Corporate Tax'] / acquirer_data['High']
-        acquirer_data['EBITDA Margin'] = acquirer_data['EBIT'] / (acquirer_data['Adj Close'] * acquirer_data['Volume'])
-        acquirer_data['Asset Turnover Ratio'] = (acquirer_data['Adj Close'] * acquirer_data['Volume']) / acquirer_data['Asset Turnover Ratio']
-        acquirer_data['Fixed Asset Turnover Ratio'] = (acquirer_data['Adj Close'] * acquirer_data['Volume']) / acquirer_data['Volume'] * (acquirer_data['Open'] + acquirer_data['Close']) / 2
-        acquirer_data['Capital Turnover Ratio'] = (acquirer_data['Adj Close'] * acquirer_data['Volume']) / (acquirer_data['Volume'] + acquirer_data['Estimated Debt Volume'])
-        
-        # Repeat the same calculations for the acquiree data
-        acquiree_data['Estimated Debt Volume'] = (acquiree_data['Close'] - acquiree_data['Adj Close']) * acquiree_data['Volume']
-        acquiree_data['Average Total Assets'] = acquiree_data['Adj Close'] * acquiree_data['Volume']
-        acquiree_data['Asset Turnover Ratio'] = acquiree_data['Volume'] / acquiree_data['Average Total Assets']
-        acquiree_data['EBIT'] = (acquiree_data['Volume'] * acquiree_data['Close']) - (acquiree_data['Volume'] * acquiree_data['Close']) - ((acquiree_data['Volume'] * acquiree_data['Close']) * (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume'])
-        acquiree_data['Interest Rate'] = 0.08
-        acquiree_data['Corporate Tax'] = 0.235
-        
-        # Calculate various ratios
-        acquiree_data['Debt-to-Equity Ratio'] = acquiree_data['Estimated Debt Volume'] / acquiree_data['Adj Close']
-        acquiree_data['Current Ratio'] = acquiree_data['Adj Close'] / acquiree_data['Estimated Debt Volume']
-        acquiree_data['Interest Coverage Ratio'] = acquiree_data['Adj Close'] / (acquiree_data['Estimated Debt Volume'] * 0.05)
-        acquiree_data['Debt-to-Capital Ratio'] = acquiree_data['Estimated Debt Volume'] / (acquiree_data['Adj Close'] + acquiree_data['Estimated Debt Volume'])
-        acquiree_data['Price-to-Earnings Ratio'] = acquiree_data['Close'] / acquiree_data['Adj Close']
-        acquiree_data['Price-to-Book Ratio'] = acquiree_data['Close'] / acquiree_data['Adj Close']
-        acquiree_data['Return on Equity (ROE)'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Adj Close']
-        acquiree_data['Return on Assets (ROA)'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume']
-        acquiree_data['Earnings Yield'] = acquiree_data['Adj Close'] / acquiree_data['Close']
-        acquiree_data['Dividend Yield'] = acquiree_data['Adj Close'] / acquiree_data['Close']
-        acquiree_data['Price-to-Sales Ratio'] = acquiree_data['Close'] / acquiree_data['Volume']
-        acquiree_data['Enterprise Value-to-EBITDA Ratio'] = (acquiree_data['Close'] * acquiree_data['Volume']) / (acquiree_data['Adj Close'] * 0.05)
-        acquiree_data['Asset Turnover Ratio'] = acquiree_data['Volume'] / acquiree_data['Adj Close']
-        acquiree_data['Inventory Turnover Ratio'] = acquiree_data['Volume'] / (acquiree_data['Close'] - acquiree_data['Open'])
-        acquiree_data['Receivables Turnover Ratio'] = acquiree_data['Volume'] / (acquiree_data['Close'] - acquiree_data['Open'])
-        acquiree_data['Payables Turnover Ratio'] = acquiree_data['Volume'] / (acquiree_data['Close'] - acquiree_data['Open'])
-        acquiree_data['Cash Conversion Cycle'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume']
-        acquiree_data['Interest Coverage Ratio'] = acquiree_data['Adj Close'] / (acquiree_data['Estimated Debt Volume'] * 0.05)
-        acquiree_data['Debt Service Coverage Ratio'] = acquiree_data['Adj Close'] / (acquiree_data['Estimated Debt Volume'] * 0.05)
-        acquiree_data['Return on Invested Capital (ROIC)'] = (acquiree_data['Close'] - acquiree_data['Open']) / (acquiree_data['Adj Close'] + acquiree_data['Estimated Debt Volume'])
-        acquiree_data['Return on Common Equity (ROCE)'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Adj Close']
-        acquiree_data['Gross Margin Ratio'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume']
-        acquiree_data['Operating Margin Ratio'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume']
-        acquiree_data['Net Profit Margin Ratio'] = (acquiree_data['Close'] - acquiree_data['Open']) / acquiree_data['Volume']
-        acquiree_data['Debt to Assets Ratio'] = acquiree_data['Estimated Debt Volume'] / acquiree_data['Asset Turnover Ratio']
-        acquiree_data['Equity Ratio'] = acquiree_data['Volume'] / acquiree_data['Asset Turnover Ratio']
-        acquiree_data['Financial Leverage Ratio'] = acquiree_data['Asset Turnover Ratio'] / acquiree_data['Volume']
-        acquiree_data['Proprietary Ratio'] = acquiree_data['Volume'] / acquiree_data['Asset Turnover Ratio']
-        acquiree_data['Capital Gearing Ratio'] = acquiree_data['Estimated Debt Volume'] / acquiree_data['Volume']
-        acquiree_data['Interest Coverage Ratio'] = acquiree_data['EBIT'] / (acquiree_data['Estimated Debt Volume'] * acquiree_data['Interest Rate'])
-        acquiree_data['DSCR'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / (acquiree_data['Estimated Debt Volume'])
-        acquiree_data['Gross Profit Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) - (acquiree_data['Close'] * acquiree_data['Volume']) / (acquiree_data['Adj Close'] * acquiree_data['Volume'])
-        acquiree_data['Net Profit Ratio'] = (acquiree_data['Close'] * acquiree_data['Volume']) * acquiree_data['Corporate Tax'] / (acquiree_data['Adj Close'] * acquiree_data['Volume'])
-        acquiree_data['ROI'] = (acquiree_data['Close'] * acquiree_data['Volume']) * acquiree_data['Corporate Tax'] / acquiree_data['High']
-        acquiree_data['EBITDA Margin'] = acquiree_data['EBIT'] / (acquiree_data['Adj Close'] * acquiree_data['Volume'])
-        acquiree_data['Asset Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / acquiree_data['Asset Turnover Ratio']
-        acquiree_data['Fixed Asset Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / acquiree_data['Volume'] * (acquiree_data['Open'] + acquiree_data['Close']) / 2
-        acquiree_data['Capital Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / (acquiree_data['Volume'] + acquiree_data['Estimated Debt Volume'])
-       
-        # Plot each column
-        for column in acquirer_data.columns:
-            if column != 'Date':
-                plt.figure(figsize=(10, 6))
-                plt.plot(acquirer_data['Date'], acquirer_data[column], label='Acquirer', color='red')
-                plt.plot(acquiree_data['Date'], acquiree_data[column], label='Acquiree', color='blue')
-                plt.title(column)
-                plt.xlabel('Date')
-                plt.ylabel(column)
-                plt.legend()
-                st.pyplot(plt)
-        
-        # Calculate compatibility score
-        compatibility_score = 0
-        for metric in ['Debt-to-Equity Ratio', 'Current Ratio', 'Interest Coverage Ratio',...]:
-            acquirer_metric = acquirer_data[metric].mean()
-            acquiree_metric = acquiree_data[metric].mean()
-            compatibility_score += abs(acquirer_metric - acquiree_metric)
-        
-        st.write("Compatibility Score:", compatibility_score)
-                
-        try:
-            html = gazpacho.get(news_url)
-            soup = gazpacho.Soup(html)
-            article_text = ""
-            
-            # Find the article content using a CSS selector
-            for paragraph in soup.find("p", mode="all"):
-                article_text += paragraph.text + " "
-            
-            # Tokenize the text
-            tokens = word_tokenize(article_text)
-            
-            # Remove stopwords
-            stop_words = set(stopwords.words('english'))
-            tokens = [token for token in tokens if token.lower() not in stop_words]
-            
-            # Calculate sentiment score
-            sia = SentimentIntensityAnalyzer()
-            sentiment_score = sia.polarity_scores(' '.join(tokens))
-            
-            # Display sentiment score
-            st.write("Sentiment Score:")
-            st.write(f"Positive: {sentiment_score['pos']:.2f}")
-            st.write(f"Negative: {sentiment_score['neg']:.2f}")
-            st.write(f"Neutral: {sentiment_score['neu']:.2f}")
-            st.write(f"Compound: {sentiment_score['compound']:.2f}")
-            
-            # Determine sentiment
-            if sentiment_score['compound'] > 0.05:
-                sentiment = "Positive"
-            elif sentiment_score['compound'] < -0.05:
-                sentiment = "Negative"
-            else:
-                sentiment = "Neutral"
-            
-            st.write(f"Overall Sentiment: {sentiment}")
-        except Exception as e:
-            st.write("Error:", e)
+    for metric in metrics:
+        if metric in acquirer_data.columns and metric in acquiree_data.columns:
+            correlation = acquirer_data[metric].corr(acquiree_data[metric])
+            if correlation > 0.75:
+                compatibility_score += 1
+            elif correlation < -0.75:
+                compatibility_score -= 1
+    
+    st.write(f"Compatibility Score: {compatibility_score}")
+
+# Fetch and display news data using gazpacho
+def fetch_news(ticker):
+    base_url = "https://finance.yahoo.com/quote/"
+    url = base_url + ticker
+    html = gazpacho.get(url).text
+    news_items = gazpacho.Soup(html).find("li", {"class": "js-stream-content"})
+    news_data = []
+    for item in news_items:
+        title = item.find("h3").text
+        summary = item.find("p").text
+        news_data.append({"Title": title, "Summary": summary})
+    return news_data
+
+# Display news data for both acquirer and acquiree
+acquirer_news = fetch_news(acquirer_ticker)
+acquiree_news = fetch_news(acquiree_ticker)
+
+st.subheader(f"{acquirer_ticker} News")
+for news in acquirer_news:
+    st.write(f"**Title:** {news['Title']}")
+    st.write(f"**Summary:** {news['Summary']}")
+    st.write("")
+
+st.subheader(f"{acquiree_ticker} News")
+for news in acquiree_news:
+    st.write(f"**Title:** {news['Title']}")
+    st.write(f"**Summary:** {news['Summary']}")
+    st.write("")
+
+# Perform NLP sentiment analysis
+def sentiment_analysis(news_data):
+    sia = SentimentIntensityAnalyzer()
+    for news in news_data:
+        score = sia.polarity_scores(news['Summary'])
+        news['Sentiment'] = score
+    return news_data
+
+# Analyze sentiment for news data
+acquirer_news_sentiment = sentiment_analysis(acquirer_news)
+acquiree_news_sentiment = sentiment_analysis(acquiree_news)
+
+st.subheader(f"{acquirer_ticker} News Sentiment Analysis")
+for news in acquirer_news_sentiment:
+    st.write(f"**Title:** {news['Title']}")
+    st.write(f"**Summary:** {news['Summary']}")
+    st.write(f"**Sentiment:** {news['Sentiment']}")
+    st.write("")
+
+st.subheader(f"{acquiree_ticker} News Sentiment Analysis")
+for news in acquiree_news_sentiment:
+    st.write(f"**Title:** {news['Title']}")
+    st.write(f"**Summary:** {news['Summary']}")
+    st.write(f"**Sentiment:** {news['Sentiment']}")
+    st.write("")
