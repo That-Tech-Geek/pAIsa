@@ -5,7 +5,7 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 import gazpacho
-
+import matplotlib as plt
 st.title("Welcome to pAIsa, the Indian AI Investment Bank!")
 
 # Create a dropdown menu
