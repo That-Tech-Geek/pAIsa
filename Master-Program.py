@@ -136,37 +136,7 @@ if service_type == "Mergers and Acquisition Advisory Services":
         acquiree_data['Asset Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / acquiree_data['Asset Turnover Ratio']
         acquiree_data['Fixed Asset Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / acquiree_data['Volume'] * (acquiree_data['Open'] + acquiree_data['Close']) / 2
         acquiree_data['Capital Turnover Ratio'] = (acquiree_data['Adj Close'] * acquiree_data['Volume']) / (acquiree_data['Volume'] + acquiree_data['Estimated Debt Volume'])
-        
-        # Now that we have calculated all the financial ratios for both the acquirer and acquiree,
-        # we can perform a comparative analysis to identify potential synergies and areas of improvement.
-        
-        # Let's start by comparing the debt-to-equity ratios of both companies
-        debt_to_equity_ratio_acquirer = acquirer_data['Debt-to-Equity Ratio'].iloc[-1]
-        debt_to_equity_ratio_acquiree = acquiree_data['Debt-to-Equity Ratio'].iloc[-1]
-        
-        print(f"Acquirer's Debt-to-Equity Ratio: {debt_to_equity_ratio_acquirer:.2f}")
-        print(f"Acquiree's Debt-to-Equity Ratio: {debt_to_equity_ratio_acquiree:.2f}")
-        
-        # Compare the interest coverage ratios of both companies
-        interest_coverage_ratio_acquirer = acquirer_data['Interest Coverage Ratio'].iloc[-1]
-        interest_coverage_ratio_acquiree = acquiree_data['Interest Coverage Ratio'].iloc[-1]
-        
-        print(f"Acquirer's Interest Coverage Ratio: {interest_coverage_ratio_acquirer:.2f}")
-        print(f"Acquiree's Interest Coverage Ratio: {interest_coverage_ratio_acquiree:.2f}")
-        
-        # Compare the return on equity (ROE) of both companies
-        roe_acquirer = acquirer_data['Return on Equity (ROE)'].iloc[-1]
-        roe_acquiree = acquiree_data['Return on Equity (ROE)'].iloc[-1]
-        
-        print(f"Acquirer's ROE: {roe_acquirer:.2f}%")
-        print(f"Acquiree's ROE: {roe_acquiree:.2f}%")
-        
-        # Compare the return on assets (ROA) of both companies
-        roa_acquirer = acquirer_data['Return on Assets (ROA)'].iloc[-1]
-        roa_acquiree = acquiree_data['Return on Assets (ROA)'].iloc[-1]
-        
-        print(f"Acquirer's ROA: {roa_acquirer:.2f}%")
-        print(f"Acquiree's ROA: {roa_acquiree:.2f}%")        
+       
         # Plot comparison of metrics
         fig, ax = plt.subplots(1, 2, figsize=(12, 6))
         sns.lineplot(x=acquirer_data.index, y=acquirer_data['Debt-to-Equity Ratio'], ax=ax[0], label=acquirer_ticker)
