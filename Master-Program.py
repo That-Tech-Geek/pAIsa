@@ -138,7 +138,7 @@ def main():
 
     if service == 'Equity Analysis':
         ticker = st.text_input("Enter Yahoo Finance Ticker Symbol", "AAPL")
-        period = st.selectbox("Select Data Period", ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', 'max'])
+        period = st.selectbox("Select Data Period", ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y'])
         interval = st.selectbox("Select Data Interval", ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1d', '5d', '1wk', '1mo'])
 
         if st.button("Analyze"):
@@ -213,7 +213,7 @@ def main():
     elif service == 'Portfolio Optimisation':
         st.header("Portfolio Optimization")
 
-        tickers = st.text_area("Enter Tickers (comma separated)", "AAPL, MSFT, TSLA").split(',')
+        tickers = st.text_area("Enter Tickers (comma separated)")
         start_date = st.date_input("Start Date", datetime(2022, 1, 1))
         end_date = st.date_input("End Date", datetime(2024, 1, 1))
 
