@@ -96,7 +96,7 @@ class PortfolioOptimizer:
         self.cov_matrix = self.data.pct_change().cov()
 
     def get_data(self):
-        data = yf.download(self.tickers, start=self.start_date, end=self.end_date)['Adj Close']
+        data = yf.download(self.tickers, start=self.start_date, end=self.end_date, progress=False)['Adj Close']
         return data
 
     def portfolio_performance(self, weights):
