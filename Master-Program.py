@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import yfinance as yf
 from scipy.optimize import minimize
-from io import BytesIO
 from datetime import datetime
 
 # Function Definitions
@@ -31,7 +30,7 @@ def calculate_bollinger_bands(data, window=20):
     return rolling_mean, upper_band, lower_band
 
 def analyze_stock(ticker, period='1y', interval='1d'):
-    stock_data = yf.download(ticker, period=period, interval=interval)
+    stock_data = yf.download(ticker, period=period, interval=interval, progress=False)
     if stock_data.empty:
         return pd.DataFrame()
 
@@ -49,7 +48,7 @@ def analyze_stock(ticker, period='1y', interval='1d'):
 
 def fetch_financial_data(ticker, start, end):
     stock = yf.Ticker(ticker)
-    history = stock.history(start=start, end=end)
+    history = stock.history(start=start, end=end, progress=False)
     financials = stock.financials
     balance_sheet = stock.balance_sheet
     cashflow = stock.cashflow
@@ -87,7 +86,7 @@ def calculate_dcf(fcf, growth_rate, discount_rate, terminal_growth_rate, project
 
 class PortfolioOptimizer:
     def __init__(self, tickers, start_date, end_date, risk_free_rate=0.0):
-        self.tickers = tickers
+        self.tickers = tickers.split(",")
         self.start_date = start_date
         self.end_date = end_date
         self.risk_free_rate = risk_free_rate
@@ -113,7 +112,7 @@ class PortfolioOptimizer:
 
     def optimize_portfolio(self):
         num_assets = len(self.tickers)
-        initial_weights = num_assets * [1. / num_assets]
+        initial_weights = num_assets * [1.0 / num_assets]
         bounds = tuple((0, 1) for _ in range(num_assets))
         constraints = ({'type': 'eq', 'fun': self.check_sum})
         optimal = minimize(self.negative_sharpe_ratio, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
@@ -165,15 +164,15 @@ def main():
                     ax[1].plot(stock_data['MACD'], label='MACD', color='purple')
                     ax[1].plot(stock_data['Signal'], label='Signal Line', color='red', linestyle='--')
                     ax[1].axhline(0, color='black', linestyle='--')
-                    ax[1].set_title('MACD and Signal Line')
+                    ax[1].set_title('MACD Analysis')
                     ax[1].set_xlabel('Date')
                     ax[1].set_ylabel('MACD Value')
                     ax[1].legend()
 
-                    ax[2].plot(stock_data['RSI'], label='RSI', color='darkblue')
-                    ax[2].axhline(30, color='red', linestyle='--')
-                    ax[2].axhline(70, color='red', linestyle='--')
-                    ax[2].set_title('Relative Strength Index (RSI)')
+                    ax[2].plot(stock_data['RSI'], label='RSI', color='magenta')
+                    ax[2].axhline(30, color='blue', linestyle='--', label='Oversold')
+                    ax[2].axhline(70, color='red', linestyle='--', label='Overbought')
+                    ax[2].set_title('RSI Analysis')
                     ax[2].set_xlabel('Date')
                     ax[2].set_ylabel('RSI Value')
                     ax[2].legend()
@@ -181,44 +180,46 @@ def main():
                     plt.tight_layout()
                     st.pyplot(fig)
 
+                    st.write(f"Cumulative Return: {stock_data['Cumulative Return'].iloc[-1]:.2f}")
+                    st.write(f"Average Daily Return: {stock_data['Daily Return'].mean():.2f}")
+                    st.write(f"Average Volatility: {stock_data['Volatility'].mean():.2f}")
+
     elif service == 'Mergers and Acquisitions':
-        acquirer_ticker = st.text_input("Enter Acquirer Ticker", 'GOOGL')
-        target_ticker = st.text_input("Enter Target Ticker", 'MSFT')
-        start_date = st.date_input("Start Date", datetime(2023, 1, 1))
-        end_date = st.date_input("End Date", datetime.now())
+        acquirer_ticker = st.text_input("Enter Acquirer Ticker", "AAPL")
+        target_ticker = st.text_input("Enter Target Ticker", "MSFT")
+        start_date = st.date_input("Select Start Date", datetime(2020, 1, 1))
+        end_date = st.date_input("Select End Date", datetime.today())
 
         if st.button("Analyze Synergies"):
-            with st.spinner("Fetching and analyzing financial data..."):
-                acquirer_data, acquirer_financials, acquirer_bs, acquirer_cf, acquirer_valuation = fetch_financial_data(acquirer_ticker, start_date, end_date)
-                target_data, target_financials, target_bs, target_cf, target_valuation = fetch_financial_data(target_ticker, start_date, end_date)
+            acquirer_history, acquirer_financials, acquirer_balance_sheet, acquirer_cashflow, acquirer_info = fetch_financial_data(acquirer_ticker, start_date, end_date)
+            target_history, target_financials, target_balance_sheet, target_cashflow, target_info = fetch_financial_data(target_ticker, start_date, end_date)
 
-                acquirer_metrics = extract_key_metrics(acquirer_financials, acquirer_bs, acquirer_cf)
-                target_metrics = extract_key_metrics(target_financials, target_bs, target_cf)
-
+            if acquirer_financials.empty or target_financials.empty:
+                st.error("Financial data is not available.")
+            else:
+                acquirer_metrics = extract_key_metrics(acquirer_financials, acquirer_balance_sheet, acquirer_cashflow)
+                target_metrics = extract_key_metrics(target_financials, target_balance_sheet, target_cashflow)
                 synergies = calculate_synergies(acquirer_metrics, target_metrics)
-                st.write("Projected Synergies:")
+
+                st.write(f"Synergies between {acquirer_ticker} and {target_ticker}:")
                 st.write(synergies)
 
     elif service == 'Portfolio Optimisation':
-        st.write("Enter comma-separated ticker symbols for portfolio optimization.")
-        tickers_input = st.text_input("Tickers", "AAPL, MSFT, GOOG")
-        tickers = [ticker.strip() for ticker in tickers_input.split(',')]
-        start_date = st.date_input("Start Date", datetime(2022, 1, 1))
-        end_date = st.date_input("End Date", datetime.now())
-        risk_free_rate = st.number_input("Risk-Free Rate (%)", 0.0, 10.0, 0.0) / 100
+        tickers = st.text_input("Enter ticker symbols separated by commas", "AAPL,MSFT,GOOG,AMZN")
+        start_date = st.date_input("Select Start Date", datetime(2020, 1, 1))
+        end_date = st.date_input("Select End Date", datetime.today())
+        risk_free_rate = st.number_input("Enter Risk-Free Rate (as a decimal)", 0.01)
 
         if st.button("Optimize Portfolio"):
-            with st.spinner("Optimizing portfolio..."):
-                optimizer = PortfolioOptimizer(tickers, start_date, end_date, risk_free_rate)
-                optimal_weights = optimizer.optimize_portfolio()
+            optimizer = PortfolioOptimizer(tickers, start_date, end_date, risk_free_rate)
+            optimal_weights = optimizer.optimize_portfolio()
+            st.write(f"Optimal Weights for {tickers}: {optimal_weights}")
 
-                st.write("Optimal Portfolio Weights:")
-                weights_dict = {tickers[i]: round(optimal_weights[i], 4) for i in range(len(tickers))}
-                st.write(weights_dict)
+            results = optimizer.simulate_portfolios(num_portfolios=5000)
+            max_sharpe_idx = np.argmax(results[:, -2] / results[:, -1])
+            max_sharpe_ratio = results[max_sharpe_idx, -2] / results[max_sharpe_idx, -1]
 
-                simulated_portfolios = optimizer.simulate_portfolios()
-                st.write("Simulated Portfolio Results:")
-                st.dataframe(pd.DataFrame(simulated_portfolios, columns=[*tickers, 'Expected Return', 'Volatility']).head(10))
+            st.write(f"Maximum Sharpe Ratio: {max_sharpe_ratio:.2f}")
 
 if __name__ == "__main__":
     main()
