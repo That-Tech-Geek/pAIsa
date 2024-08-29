@@ -1,413 +1,232 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 import streamlit as st
 import yfinance as yf
-import pandas as pd
-from nltk.sentiment import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize, sent_tokenize
-import gazpacho
-import matplotlib as plt
-st.title("Welcome to pAIsa, the Indian AI Investment Bank!")
+from scipy.optimize import minimize
+from io import BytesIO
+from datetime import datetime
 
-# Create a dropdown menu
-service_type = st.selectbox("Select a service type:", [
-    "Asset Management Services",
-    "Mergers and Acquisition Advisory Services",
-    "Research Management Services",
-    "Risk Analysis Services",
-    "Structured Financial Management Services",
-    "Exit Strategies",
-    "IPO Management Services",
-    "Private Equity Services",
-    "Venture Capital Services",
-    "Debt Capital Markets Services",
-    "Equity Capital Markets Services",
-    "Restructuring Services",
-    "Corporate Finance Services",
-    "Financial Planning Services",
-    "Stock Data Pulling Services"
-])
-if service_type == "Mergers and Acquisition Advisory Services":
-    # Dictionary to map exchanges to suffixes
-    exchange_suffixes = {
-        "NYSE": "",
-        "NASDAQ": "",
-        "BSE": "",
-        "NSE": ".NS",
-        "Cboe Indices": ".CI",
-        "Chicago Board of Trade (CBOT)***": ".CBT",
-        "Chicago Mercantile Exchange (CME)***": ".CME",
-        "Dow Jones Indexes": ".DJ",
-        "Nasdaq Stock Exchange": ".NSQ",
-        "ICE Futures US": ".NYB",
-        "New York Commodities Exchange (COMEX)***": ".CMX",
-        "New York Mercantile Exchange (NYMEX)***": ".NYM",
-        "Options Price Reporting Authority (OPRA)": ".OPR",
-        "OTC Markets Group**": ".OTC",
-        "S & P Indices": ".SP",
-        "Buenos Aires Stock Exchange (BYMA)": ".BA",
-        "Vienna Stock Exchange": ".VI",
-        "Australian Stock Exchange (ASX)": ".AX",
-        "Cboe Australia": ".CBA",
-        "Euronext Brussels": ".BR",
-        "Sao Paolo Stock Exchange (BOVESPA)": ".SA",
-        "Canadian Securities Exchange": ".CN",
-        "Cboe Canada": ".CBOE",
-        "Toronto Stock Exchange (TSX)": ".TO",
-        "TSX Venture Exchange (TSXV)": ".TV",
-        "Santiago Stock Exchange": ".SN",
-        "Shanghai Stock Exchange": ".SS",
-        "Shenzhen Stock Exchange": ".SZ",
-        "Prague Stock Exchange Index": ".PR",
-        "Nasdaq OMX Copenhagen": ".CO",
-        "Egyptian Exchange Index (EGID)": ".CA",
-        "Nasdaq OMX Tallinn": ".TL",
-        "Cboe Europe": ".CE",
-        "Euronext": ".EU",
-        "Nasdaq OMX Helsinki": ".HE",
-        "Euronext Paris": ".PA",
-        "Berlin Stock Exchange": ".BE",
-        "Bremen Stock Exchange": ".BM",
-        "Dusseldorf Stock Exchange": ".DU",
-        "Frankfurt Stock Exchange": ".F",
-        "Hamburg Stock Exchange": ".HM",
-        "Hanover Stock Exchange": ".HA",
-        "Munich Stock Exchange": ".MU",
-        "Stuttgart Stock Exchange": ".SG",
-        "Deutsche Boerse XETRA": ".DE",
-        "Collectable Indices": ".REGA",
-        "Cryptocurrencies": "",
-        "Currency Rates": ".X",
-        "MSCI Indices": ".MSCI",
-        "Athens Stock Exchange (ATHEX)": ".AT",
-        "Hang Seng Indices": ".HSI",
-        "Hong Kong Stock Exchange (HKEX)*": ".HK",
-        "Budapest Stock Exchange": ".BD",
-        "Nasdaq OMX Iceland": ".IC",
-        "Bombay Stock Exchange": ".BO",
-        "National Stock Exchange of India": ".NS",
-        "Indonesia Stock Exchange (IDX)": ".JK",
-        "Euronext Dublin": ".ID",
-        "Tel Aviv Stock Exchange": ".TA",
-        "EuroTLX": ".TLX",
-        "Italian Stock Exchange": ".MI",
-        "Nikkei Indices": ".NIKKEI",
-        "Tokyo Stock Exchange": ".T",
-        "Boursa Kuwait": ".KW",
-        "Nasdaq OMX Riga": ".RG",
-        "Nasdaq OMX Vilnius": ".VL",
-        "Malaysian Stock Exchange": ".KL",
-        "Mexico Stock Exchange (BMV)": ".MX",
-        "Euronext Amsterdam": ".AS",
-        "New Zealand Stock Exchange (NZX)": ".NZ",
-        "Oslo Stock Exchange": ".OL",
-        "Philippine Stock Exchange Indices": ".PS",
-        "Warsaw Stock Exchange": ".WA",
-        "Euronext Lisbon": ".LS",
-        "Qatar Stock Exchange": ".QA",
-        "Bucharest Stock Exchange": ".RO",
-        "Singapore Stock Exchange (SGX)": ".SI",
-        "Johannesburg Stock Exchange": ".JO",
-        "Korea Stock Exchange": ".KS",
-        "KOSDAQ": ".KQ",
-        "Madrid SE C.A.T.S.": ".MC",
-        "Saudi Stock Exchange (Tadawul)": ".SAU",
-        "Nasdaq OMX Stockholm": ".ST",
-        "Swiss Exchange (SIX)": ".SW",
-        "Taiwan OTC Exchange": ".TWO",
-        "Taiwan Stock Exchange (TWSE)": ".TW",
-        "Stock Exchange of Thailand (SET)": ".BK",
-        "Borsa İstanbul": ".IS",
-        "Dubai Financial Market": ".AE",
-        "Cboe UK": ".CUK",
-        "FTSE Indices": ".FTSE",
-        "London Stock Exchange": ".L",
-        "Caracas Stock Exchange": ".CR"
-    }
+# Function Definitions
+def calculate_rsi(data, window=14):
+    delta = data['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+def calculate_macd(data, short_window=12, long_window=26, signal_window=9):
+    short_ema = data['Close'].ewm(span=short_window, adjust=False).mean()
+    long_ema = data['Close'].ewm(span=long_window, adjust=False).mean()
+    macd = short_ema - long_ema
+    signal = macd.ewm(span=signal_window, adjust=False).mean()
+    return macd, signal
+
+def calculate_bollinger_bands(data, window=20):
+    rolling_mean = data['Close'].rolling(window=window).mean()
+    rolling_std = data['Close'].rolling(window=window).std()
+    upper_band = rolling_mean + (rolling_std * 2)
+    lower_band = rolling_mean - (rolling_std * 2)
+    return rolling_mean, upper_band, lower_band
+
+def analyze_stock(ticker, period='1y', interval='1d'):
+    stock_data = yf.download(ticker, period=period, interval=interval)
+    if stock_data.empty:
+        return pd.DataFrame()
+
+    stock_data['MA20'] = stock_data['Close'].rolling(window=20).mean()
+    stock_data['MA50'] = stock_data['Close'].rolling(window=50).mean()
+    stock_data['Daily Return'] = stock_data['Close'].pct_change() * 100
+    stock_data['Cumulative Return'] = (1 + stock_data['Daily Return'] / 100).cumprod()
+    stock_data['Volatility'] = stock_data['Daily Return'].rolling(window=20).std()
+    stock_data['RSI'] = calculate_rsi(stock_data)
+    stock_data['MACD'], stock_data['Signal'] = calculate_macd(stock_data)
+    stock_data['BB_Middle'], stock_data['BB_Upper'], stock_data['BB_Lower'] = calculate_bollinger_bands(stock_data)
+    stock_data['Sharpe Ratio'] = stock_data['Daily Return'].mean() / stock_data['Daily Return'].std()
     
-    # Dictionary mapping exchanges to their major indices or benchmarks
-    exchange_indices = {
-        "NYSE": "^GSPC",  # S&P 500
-        "NASDAQ": "^IXIC",  # NASDAQ Composite
-        "BSE": "^BSESN",  # SENSEX
-        "NSE": "^NSEI",  # NIFTY 50
-        "Cboe Indices": "^VIX",  # Cboe Volatility Index (VIX)
-        "Chicago Board of Trade (CBOT)***": "^VIX",  # S&P 500 VIX (example, needs actual ticker)
-        "Chicago Mercantile Exchange (CME)***": "CME",  # CME Group (example, needs actual ticker)
-        "Dow Jones Indexes": "^DJI",  # Dow Jones Industrial Average
-        "Nasdaq Stock Exchange": "^IXIC",  # NASDAQ Composite
-        "ICE Futures US": "^RUT",  # Russell 2000
-        "New York Commodities Exchange (COMEX)***": "GC=F",  # COMEX Gold (example, needs actual ticker)
-        "New York Mercantile Exchange (NYMEX)***": "CL=F",  # NYMEX Crude Oil (example, needs actual ticker)
-        "Options Price Reporting Authority (OPRA)": "OPRA",  # OPRA Index (example, needs actual ticker)
-        "OTC Markets Group**": "OTCM",  # OTCQX Best Market (example, needs actual ticker)
-        "S & P Indices": "^GSPC",  # S&P 500
-        "Buenos Aires Stock Exchange (BYMA)": "^MERV",  # MERVAL
-        "Vienna Stock Exchange": "^ATX",  # ATX
-        "Australian Stock Exchange (ASX)": "^AXJO",  # S&P/ASX 200
-        "Cboe Australia": "^XVI",  # S&P/ASX 200 VIX (example, needs actual ticker)
-        "Euronext Brussels": "^BFX",  # BEL 20
-        "Sao Paolo Stock Exchange (BOVESPA)": "^BVSP",  # IBOVESPA
-        "Canadian Securities Exchange": "^GSPTSE",  # S&P/TSX Composite
-        "Cboe Canada": "^VIXC",  # S&P/TSX Composite VIX (example, needs actual ticker)
-        "Toronto Stock Exchange (TSX)": "^GSPTSE",  # S&P/TSX Composite
-        "TSX Venture Exchange (TSXV)": "^JX",  # TSX Venture Composite (example, needs actual ticker)
-        "Santiago Stock Exchange": "^IPSA",  # IPSA
-        "Shanghai Stock Exchange": "000001.SS",  # SSE Composite Index
-        "Shenzhen Stock Exchange": "399001.SZ",  # SZSE Component Index
-        "Prague Stock Exchange Index": "^PX",  # PX
-        "Nasdaq OMX Copenhagen": "^OMXC25",  # OMX Copenhagen 25
-        "Egyptian Exchange Index (EGID)": "^EGX30.CA",  # EGX 30
-        "Nasdaq OMX Tallinn": "^OMXTGI",  # OMX Tallinn
-        "Cboe Europe": "^STOXX50E",  # EURO STOXX 50
-        "Euronext": "^N100",  # Euronext 100
-        "Nasdaq OMX Helsinki": "^OMXH25",  # OMX Helsinki 25
-        "Euronext Paris": "^FCHI",  # CAC 40
-        "Berlin Stock Exchange": "^GDAXI",  # DAX
-        "Bremen Stock Exchange": "BREXIT",  # BREXIT (example, needs actual ticker)
-        "Dusseldorf Stock Exchange": "^GDAXI",  # DAX
-        "Frankfurt Stock Exchange": "^GDAXI",  # DAX
-        "Hamburg Stock Exchange": "BREXIT",  # BREXIT (example, needs actual ticker)
-        "Hanover Stock Exchange": "BREXIT",  # BREXIT (example, needs actual ticker)
-        "Munich Stock Exchange": "^GDAXI",  # DAX
-        "Stuttgart Stock Exchange": "BREXIT",  # BREXIT (example, needs actual ticker)
-        "Deutsche Boerse XETRA": "^GDAXI",  # DAX
-        "Collectable Indices": "COLLECT",  # COLLECT (example, needs actual ticker)
-        "Cryptocurrencies": "CRYPTO",  # CRYPTO (example, needs actual ticker)
-        "Currency Rates": "CURRENCY",  # CURRENCY (example, needs actual ticker)
-        "MSCI Indices": "MSCI",  # MSCI (example, needs actual ticker)
-        "Athens Stock Exchange (ATHEX)": "^ATG",  # ASE
-        "Hang Seng Indices": "^HSI",  # HANG SENG
-        "Hong Kong Stock Exchange (HKEX)*": "^HSI",  # HANG SENG
-        "Budapest Stock Exchange": "^BUX",  # BUX
-        "Nasdaq OMX Iceland": "^OMXICELAND",  # OMX
-        "Bombay Stock Exchange": "^BSESN",  # BSE
-        "National Stock Exchange of India": "^NSEI",  # NSE
-        "Indonesia Stock Exchange (IDX)": "^JKSE",  # IDX
-        "Euronext Dublin": "^ISEQ",  # INDEX (example, needs actual ticker)
-        "Tel Aviv Stock Exchange": "^TA125.TA",  # TEL AVIV
-        "EuroTLX": "^TLX",  # EURO TLX (example, needs actual ticker)
-        "Italian Stock Exchange": "FTSEMIB.MI",  # ITALY (example, needs actual ticker)
-        "Nikkei Indices": "^N225",  # NIKKEI
-        "Tokyo Stock Exchange": "^TPX",  # TOKYO (example, needs actual ticker)
-        "Boursa Kuwait": "^KWSE",  # KW (example, needs actual ticker)
-        "Nasdaq OMX Riga": "^OMXRGI",  # RIGA
-        "Nasdaq OMX Vilnius": "^OMXVGI",  # VILNIUS
-        "Malaysian Stock Exchange": "^KLSE",  # MALAYSIA (example, needs actual ticker)
-        "Mexico Stock Exchange (BMV)": "^MXX",  # BMV (example, needs actual ticker)
-        "Euronext Amsterdam": "^AEX",  # EUROPE (example, needs actual ticker)
-        "New Zealand Stock Exchange (NZX)": "^NZ50",  # NZX (example, needs actual ticker)
-        "Oslo Stock Exchange": "^OSEAX",  # OSLO (example, needs actual ticker)
-        "Philippine Stock Exchange Indices": "^PSEi",  # PHILIPPINES (example, needs actual ticker)
-        "Warsaw Stock Exchange": "^WIG",  # WSE (example, needs actual ticker)
-        "Euronext Lisbon": "^PSI20",  # LISBON (example, needs actual ticker)
-        "Qatar Stock Exchange": "^QSI",  # QATAR (example, needs actual ticker)
-        "Bucharest Stock Exchange": "^BET",  # BUCHAREST (example, needs actual ticker)
-        "Singapore Stock Exchange (SGX)": "^STI",  # SGX (example, needs actual ticker)
-        "Johannesburg Stock Exchange": "^J203.JO",  # JOHANNESBURG (example, needs actual ticker)
-        "Korea Stock Exchange": "^KS11",  # KOREA (example, needs actual ticker)
-        "KOSDAQ": "^KQ11",  # KOSDAQ (example, needs actual ticker)
-        "Madrid SE C.A.T.S.": "^IBEX",  # MADRID (example, needs actual ticker)
-        "Saudi Stock Exchange (Tadawul)": "^TASI.SR",  # TADAWUL (example, needs actual ticker)
-        "Nasdaq OMX Stockholm": "^OMX",  # OMX (example, needs actual ticker)
-        "Swiss Exchange (SIX)": "^SSMI",  # SIX (example, needs actual ticker)
-        "Taiwan OTC Exchange": "^TWO",  # OTC (example, needs actual ticker)
-        "Taiwan Stock Exchange (TWSE)": "^TWII",  # TWSE (example, needs actual ticker)
-        "Stock Exchange of Thailand (SET)": "^SET.BK",  # SET (example, needs actual ticker)
-        "Borsa İstanbul": "^XU100",  # ISTANBUL (example, needs actual ticker)
-        "Dubai Financial Market": "^DFMGI",  # DFM (example, needs actual ticker)
-        "Cboe UK": "^UKX",  # UK (example, needs actual ticker)
-        "FTSE Indices": "^FTSE",  # FTSE (example, needs actual ticker)
-        "London Stock Exchange": "^FTSE",  # LSE (example, needs actual ticker)
-        "Caracas Stock Exchange": "^IBC"
-    }
-    
-    market_cap_categories = {
-        "Mega-cap": 200e9,
-        "Large-cap": 10e9,
-        "Mid-cap": 2e9,
-        "Small-cap": 500e6,
-        "Micro-cap": 50e6,
-        "Nano-cap": 0
-    }
+    return stock_data
 
-    # Set up the Streamlit app
-st.title("Financial Data Analysis and NLP News Sentiment")
+def fetch_financial_data(ticker, start, end):
+    stock = yf.Ticker(ticker)
+    history = stock.history(start=start, end=end)
+    financials = stock.financials
+    balance_sheet = stock.balance_sheet
+    cashflow = stock.cashflow
+    valuation_measures = stock.info
+    return history, financials, balance_sheet, cashflow, valuation_measures
 
-# Get user input for ticker symbols
-acquirer_ticker = st.text_input("Enter acquirer's stock ticker:")
-acquirer_exchange = st.selectbox("Select acquirer's exchange:", list(exchange_suffixes.keys()))
+def extract_key_metrics(financials, balance_sheet, cashflow):
+    metrics = {}
+    try:
+        metrics['Revenue'] = financials.loc['Total Revenue'].mean()
+        metrics['EBITDA'] = financials.loc['Operating Income'].mean()
+        metrics['Net Income'] = financials.loc['Net Income'].mean()
+        metrics['Total Debt'] = balance_sheet.loc['Long Term Debt'].mean()
+        metrics['Total Assets'] = balance_sheet.loc['Total Assets'].mean()
+        metrics['Free Cash Flow'] = cashflow.loc['Free Cash Flow'].mean()
+    except KeyError as e:
+        st.error(f"Key Error: {e}. Some metrics might be missing.")
+    return metrics
 
-acquiree_ticker = st.text_input("Enter acquiree's stock ticker:")
-acquiree_exchange = st.selectbox("Select acquiree's exchange:", list(exchange_suffixes.keys()))
+def calculate_synergies(acquirer_metrics, target_metrics):
+    synergies = {}
+    synergies['Projected Revenue'] = acquirer_metrics['Revenue'] + target_metrics['Revenue']
+    synergies['Projected EBITDA'] = acquirer_metrics['EBITDA'] + target_metrics['EBITDA']
+    synergies['Cost Synergies'] = 0.05 * synergies['Projected Revenue']
+    synergies['Projected Net Income'] = acquirer_metrics['Net Income'] + target_metrics['Net Income'] + synergies['Cost Synergies']
+    return synergies
 
-date_range = st.selectbox("Select date range:", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"])
+def calculate_dcf(fcf, growth_rate, discount_rate, terminal_growth_rate, projection_years=5):
+    fcf_projections = [fcf * (1 + growth_rate)**i for i in range(1, projection_years + 1)]
+    terminal_value = fcf_projections[-1] * (1 + terminal_growth_rate) / (discount_rate - terminal_growth_rate)
+    discounted_fcfs = [fcf / (1 + discount_rate)**i for i, fcf in enumerate(fcf_projections, 1)]
+    discounted_terminal_value = terminal_value / (1 + discount_rate)**projection_years
+    dcf_value = sum(discounted_fcfs) + discounted_terminal_value
+    return dcf_value
 
-# Define date ranges
-if date_range == "1d":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=1)
-elif date_range == "5d":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=5)
-elif date_range == "1mo":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=30)
-elif date_range == "3mo":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=90)
-elif date_range == "6mo":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=180)
-elif date_range == "1y":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=365)
-elif date_range == "2y":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=730)
-elif date_range == "5y":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=1825)
-elif date_range == "10y":
-    start_date = pd.to_datetime('today') - pd.Timedelta(days=3650)
-elif date_range == "max":
-    start_date = pd.to_datetime('1924-01-01')
-end_date = pd.to_datetime('today')
+class PortfolioOptimizer:
+    def __init__(self, tickers, start_date, end_date, risk_free_rate=0.0):
+        self.tickers = tickers
+        self.start_date = start_date
+        self.end_date = end_date
+        self.risk_free_rate = risk_free_rate
+        self.data = self.get_data()
+        self.mean_returns = self.data.pct_change().mean()
+        self.cov_matrix = self.data.pct_change().cov()
 
-# Function to fetch data from yfinance
-def fetch_data(ticker, start, end):
-    data = yf.download(ticker, start=start, end=end, progress=False)
-    return data
+    def get_data(self):
+        data = yf.download(self.tickers, start=self.start_date, end=self.end_date)['Adj Close']
+        return data
 
-# Fetch data if tickers and exchanges are provided
-if acquirer_ticker and acquirer_exchange and acquiree_ticker and acquiree_exchange:
-    acquirer_ticker_with_suffix = acquirer_ticker + exchange_suffixes[acquirer_exchange]
-    acquiree_ticker_with_suffix = acquiree_ticker + exchange_suffixes[acquiree_exchange]
-    acquirer_data = fetch_data(acquirer_ticker_with_suffix, start=start_date, end=end_date)
-    acquiree_data = fetch_data(acquiree_ticker_with_suffix, start=start_date, end=end_date)
-else:
-    st.write("Enter all the data!")
+    def portfolio_performance(self, weights):
+        returns = np.sum(self.mean_returns * weights)
+        std_dev = np.sqrt(np.dot(weights.T, np.dot(self.cov_matrix, weights)))
+        return returns, std_dev
 
-# Calculate estimated debt volume and other metrics
-def calculate_metrics(data):
-    data['Estimated Debt Volume'] = (data['Close'] - data['Adj Close']) * data['Volume']
-    data['Average Total Assets'] = data['Adj Close'] * data['Volume']
-    data['Asset Turnover Ratio'] = data['Volume'] / data['Average Total Assets']
-    data['EBIT'] = (data['Volume'] * data['Close']) - (data['Volume'] * data['Close']) - ((data['Volume'] * data['Close']) * (data['Close'] - data['Open']) / data['Volume'])
-    data['Interest Rate'] = 0.08
-    data['Corporate Tax'] = 0.235
-    
-    # Calculate various ratios
-    data['Debt-to-Equity Ratio'] = data['Estimated Debt Volume'] / data['Adj Close']
-    data['Current Ratio'] = data['Adj Close'] / data['Estimated Debt Volume']
-    data['Interest Coverage Ratio'] = data['Adj Close'] / (data['Estimated Debt Volume'] * 0.05)
-    data['Debt-to-Capital Ratio'] = data['Estimated Debt Volume'] / (data['Adj Close'] + data['Estimated Debt Volume'])
-    data['Price-to-Earnings Ratio'] = data['Close'] / data['Adj Close']
-    data['Price-to-Book Ratio'] = data['Close'] / data['Adj Close']
-    data['Return on Equity (ROE)'] = (data['Close'] - data['Open']) / data['Adj Close']
-    data['Return on Assets (ROA)'] = (data['Close'] - data['Open']) / data['Volume']
-    data['Earnings Yield'] = data['Adj Close'] / data['Close']
-    data['Dividend Yield'] = data['Adj Close'] / data['Close']
-    data['Price-to-Sales Ratio'] = data['Close'] / data['Volume']
-    data['Enterprise Value-to-EBITDA Ratio'] = (data['Close'] * data['Volume']) / (data['Adj Close'] * 0.05)
-    data['Inventory Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
-    data['Receivables Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
-    data['Payables Turnover Ratio'] = data['Volume'] / (data['Close'] - data['Open'])
-    data['Cash Conversion Cycle'] = (data['Close'] - data['Open']) / data['Volume']
-    data['Debt Service Coverage Ratio'] = data['Adj Close'] / (data['Estimated Debt Volume'] * 0.05)
-    data['Return on Invested Capital (ROIC)'] = (data['Close'] - data['Open']) / (data['Adj Close'] + data['Estimated Debt Volume'])
-    data['Return on Common Equity (ROCE)'] = (data['Close'] - data['Open']) / data['Adj Close']
-    data['Gross Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
-    data['Operating Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
-    data['Net Profit Margin Ratio'] = (data['Close'] - data['Open']) / data['Volume']
-    data['Debt to Assets Ratio'] = data['Estimated Debt Volume'] / data['Asset Turnover Ratio']
-    data['Equity Ratio'] = data['Volume'] / data['Asset Turnover Ratio']
-    data['Financial Leverage Ratio'] = data['Asset Turnover Ratio'] / data['Volume']
-    data['Proprietary Ratio'] = data['Volume'] / data['Asset Turnover Ratio']
-    data['Capital Gearing Ratio'] = data['Estimated Debt Volume'] / data['Volume']
-    data['Interest Coverage Ratio'] = data['EBIT'] / (data['Estimated Debt Volume'] * data['Interest Rate'])
-    data['DSCR'] = (data['Adj Close'] * data['Volume']) / (data['Estimated Debt Volume'])
-    data['Gross Profit Ratio'] = (data['Adj Close'] * data['Volume']) - (data['Close'] * data['Volume']) / (data['Adj Close'] * data['Volume'])
-    data['Net Profit Ratio'] = (data['Close'] * data['Volume']) * data['Corporate Tax'] / (data['Adj Close'] * data['Volume'])
-    data['ROI'] = (data['Close'] * data['Volume']) * data['Corporate Tax'] / data['High']
-    data['EBITDA Margin'] = data['EBIT'] / (data['Adj Close'] * data['Volume'])
-    data['Fixed Asset Turnover Ratio'] = (data['Adj Close'] * data['Volume']) / data['Volume'] * (data['Open'] + data['Close']) / 2
-    data['Capital Turnover Ratio'] = (data['Adj Close'] * data['Volume']) / (data['Volume'] + data['Estimated Debt Volume'])
-    return data
+    def negative_sharpe_ratio(self, weights):
+        returns, std_dev = self.portfolio_performance(weights)
+        return -(returns - self.risk_free_rate) / std_dev
 
-# Apply metric calculations
-if acquirer_data is not None and acquiree_data is not None:
-    acquirer_data = calculate_metrics(acquirer_data)
-    acquiree_data = calculate_metrics(acquiree_data)
-    
-    # Plot each column
-    for column in acquirer_data.columns:
-        if column != 'Date':
-            plt.figure(figsize=(10, 6))
-            plt.plot(acquirer_data.index, acquirer_data[column], label='Acquirer', color='red')
-            plt.plot(acquiree_data.index, acquiree_data[column], label='Acquiree', color='blue')
-            plt.title(column)
-            plt.xlabel('Date')
-            plt.ylabel(column)
-            plt.legend()
-            st.pyplot(plt)
-    
-    # Calculate compatibility score
-    compatibility_score = 0
-    metrics = ['Debt-to-Equity Ratio', 'Current Ratio', 'Interest Coverage Ratio', 'Debt-to-Capital Ratio', 'Price-to-Earnings Ratio', 'Price-to-Book Ratio', 'Return on Equity (ROE)', 'Return on Assets (ROA)', 'Earnings Yield', 'Dividend Yield', 'Price-to-Sales Ratio', 'Enterprise Value-to-EBITDA Ratio', 'Inventory Turnover Ratio', 'Receivables Turnover Ratio', 'Payables Turnover Ratio', 'Cash Conversion Cycle', 'Debt Service Coverage Ratio', 'Return on Invested Capital (ROIC)', 'Return on Common Equity (ROCE)', 'Gross Margin Ratio', 'Operating Margin Ratio', 'Net Profit Margin Ratio', 'Debt to Assets Ratio', 'Equity Ratio', 'Financial Leverage Ratio', 'Proprietary Ratio', 'Capital Gearing Ratio', 'Interest Coverage Ratio', 'DSCR', 'Gross Profit Ratio', 'Net Profit Ratio', 'ROI', 'EBITDA Margin', 'Fixed Asset Turnover Ratio', 'Capital Turnover Ratio']
-    
-    for metric in metrics:
-        if metric in acquirer_data.columns and metric in acquiree_data.columns:
-            correlation = acquirer_data[metric].corr(acquiree_data[metric])
-            if correlation > 0.75:
-                compatibility_score += 1
-            elif correlation < -0.75:
-                compatibility_score -= 1
-    
-    st.write(f"Compatibility Score: {compatibility_score}")
+    def check_sum(self, weights):
+        return np.sum(weights) - 1
 
-# Fetch and display news data using gazpacho
-def fetch_news(ticker):
-    base_url = "https://finance.yahoo.com/quote/"
-    url = base_url + ticker
-    html = gazpacho.get(url).text
-    news_items = gazpacho.Soup(html).find("li", {"class": "js-stream-content"})
-    news_data = []
-    for item in news_items:
-        title = item.find("h3").text
-        summary = item.find("p").text
-        news_data.append({"Title": title, "Summary": summary})
-    return news_data
+    def optimize_portfolio(self):
+        num_assets = len(self.tickers)
+        initial_weights = num_assets * [1. / num_assets]
+        bounds = tuple((0, 1) for _ in range(num_assets))
+        constraints = ({'type': 'eq', 'fun': self.check_sum})
+        optimal = minimize(self.negative_sharpe_ratio, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+        return optimal.x
 
-# Display news data for both acquirer and acquiree
-acquirer_news = fetch_news(acquirer_ticker)
-acquiree_news = fetch_news(acquiree_ticker)
+    def simulate_portfolios(self, num_portfolios=10000):
+        results = np.zeros((num_portfolios, len(self.tickers) + 2))
+        for i in range(num_portfolios):
+            weights = np.random.random(len(self.tickers))
+            weights /= np.sum(weights)
+            portfolio_return, portfolio_std_dev = self.portfolio_performance(weights)
+            results[i, :-2] = weights
+            results[i, -2] = portfolio_return
+            results[i, -1] = portfolio_std_dev
+        return results
 
-st.subheader(f"{acquirer_ticker} News")
-for news in acquirer_news:
-    st.write(f"**Title:** {news['Title']}")
-    st.write(f"**Summary:** {news['Summary']}")
-    st.write("")
+# Streamlit App
+def main():
+    st.title("Financial Analysis Dashboard")
 
-st.subheader(f"{acquiree_ticker} News")
-for news in acquiree_news:
-    st.write(f"**Title:** {news['Title']}")
-    st.write(f"**Summary:** {news['Summary']}")
-    st.write("")
+    service = st.selectbox("Select Service", ['Equity Analysis', 'Mergers and Acquisitions', 'Portfolio Optimisation'])
 
-# Perform NLP sentiment analysis
-def sentiment_analysis(news_data):
-    sia = SentimentIntensityAnalyzer()
-    for news in news_data:
-        score = sia.polarity_scores(news['Summary'])
-        news['Sentiment'] = score
-    return news_data
+    if service == 'Equity Analysis':
+        ticker = st.text_input("Enter Yahoo Finance Ticker Symbol", "AAPL")
+        period = st.selectbox("Select Data Period", ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y'])
+        interval = st.selectbox("Select Data Interval", ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1d', '5d', '1wk', '1mo'])
 
-# Analyze sentiment for news data
-acquirer_news_sentiment = sentiment_analysis(acquirer_news)
-acquiree_news_sentiment = sentiment_analysis(acquiree_news)
+        if st.button("Analyze"):
+            with st.spinner("Fetching and analyzing data..."):
+                stock_data = analyze_stock(ticker, period, interval)
+                if stock_data.empty:
+                    st.error("No data available.")
+                else:
+                    st.write(f"Basic Statistics for {ticker}:")
+                    st.dataframe(stock_data.describe())
 
-st.subheader(f"{acquirer_ticker} News Sentiment Analysis")
-for news in acquirer_news_sentiment:
-    st.write(f"**Title:** {news['Title']}")
-    st.write(f"**Summary:** {news['Summary']}")
-    st.write(f"**Sentiment:** {news['Sentiment']}")
-    st.write("")
+                    fig, ax = plt.subplots(3, 1, figsize=(16, 12))
 
-st.subheader(f"{acquiree_ticker} News Sentiment Analysis")
-for news in acquiree_news_sentiment:
-    st.write(f"**Title:** {news['Title']}")
-    st.write(f"**Summary:** {news['Summary']}")
-    st.write(f"**Sentiment:** {news['Sentiment']}")
-    st.write("")
+                    ax[0].plot(stock_data['Close'], label='Close Price', color='blue')
+                    ax[0].plot(stock_data['MA20'], label='20-Day MA', color='green', linestyle='--')
+                    ax[0].plot(stock_data['MA50'], label='50-Day MA', color='red', linestyle='--')
+                    ax[0].plot(stock_data['BB_Upper'], label='Upper Bollinger Band', color='orange', linestyle='--')
+                    ax[0].plot(stock_data['BB_Lower'], label='Lower Bollinger Band', color='orange', linestyle='--')
+                    ax[0].set_title(f"{ticker} Stock Price Analysis with MAs and Bollinger Bands")
+                    ax[0].set_xlabel('Date')
+                    ax[0].set_ylabel('Price')
+                    ax[0].legend()
+
+                    ax[1].plot(stock_data['MACD'], label='MACD', color='purple')
+                    ax[1].plot(stock_data['Signal'], label='Signal Line', color='red', linestyle='--')
+                    ax[1].axhline(0, color='black', linestyle='--')
+                    ax[1].set_title('MACD and Signal Line')
+                    ax[1].set_xlabel('Date')
+                    ax[1].set_ylabel('MACD')
+                    ax[1].legend()
+
+                    ax[2].plot(stock_data['RSI'], label='RSI', color='teal')
+                    ax[2].axhline(70, color='red', linestyle='--')
+                    ax[2].axhline(30, color='green', linestyle='--')
+                    ax[2].set_title('Relative Strength Index (RSI)')
+                    ax[2].set_xlabel('Date')
+                    ax[2].set_ylabel('RSI')
+                    ax[2].legend()
+
+                    st.pyplot(fig)
+
+    elif service == 'Mergers and Acquisitions':
+        st.header("Mergers and Acquisitions Analysis")
+
+        acquirer_ticker = st.text_input("Enter Acquirer Ticker Symbol", "AAPL")
+        target_ticker = st.text_input("Enter Target Ticker Symbol", "MSFT")
+        start_date = st.date_input("Start Date", datetime(2022, 1, 1))
+        end_date = st.date_input("End Date", datetime(2024, 1, 1))
+
+        if st.button("Analyze M&A"):
+            with st.spinner("Fetching financial data..."):
+                acquirer_history, acquirer_financials, acquirer_balance_sheet, acquirer_cashflow, _ = fetch_financial_data(acquirer_ticker, start_date, end_date)
+                target_history, target_financials, target_balance_sheet, target_cashflow, _ = fetch_financial_data(target_ticker, start_date, end_date)
+
+                acquirer_metrics = extract_key_metrics(acquirer_financials, acquirer_balance_sheet, acquirer_cashflow)
+                target_metrics = extract_key_metrics(target_financials, target_balance_sheet, target_cashflow)
+
+                if acquirer_metrics and target_metrics:
+                    synergies = calculate_synergies(acquirer_metrics, target_metrics)
+                    st.write("Synergies and Projected Metrics:")
+                    st.write(synergies)
+
+                    fcf = acquirer_metrics.get('Free Cash Flow', 0)
+                    growth_rate = 0.05  # Example growth rate
+                    discount_rate = 0.08  # Example discount rate
+                    terminal_growth_rate = 0.03  # Example terminal growth rate
+                    dcf_value = calculate_dcf(fcf, growth_rate, discount_rate, terminal_growth_rate)
+                    st.write(f"Discounted Cash Flow (DCF) Value: ${dcf_value:,.2f}")
+                else:
+                    st.error("Could not fetch financial metrics for one or both tickers.")
+
+    elif service == 'Portfolio Optimisation':
+        st.header("Portfolio Optimization")
+
+        tickers = st.text_area("Enter Tickers (comma separated)", "AAPL, MSFT, TSLA").split(',')
+        start_date = st.date_input("Start Date", datetime(2022, 1, 1))
+        end_date = st.date_input("End Date", datetime(2024, 1, 1))
+
+        if st.button("Optimize Portfolio"):
+            with st.spinner("Optimizing portfolio..."):
+                optimizer = PortfolioOptimizer(tickers, start_date, end_date)
+                optimal_weights = optimizer.optimize_portfolio()
+                st.write("Optimal Portfolio Weights:")
+                st.write({ticker: round(weight, 4) for ticker, weight in zip(tickers, optimal_weights)})
+
+                portfolios = optimizer.simulate_portfolios()
+                st.write("Portfolio Simulation Results:")
+                st.write(pd.DataFrame(portfolios, columns=tickers + ['Return', 'Volatility']).describe())
+
+if __name__ == "__main__":
+    main()
