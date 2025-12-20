@@ -1,8 +1,0 @@
-streamlit
-yfinance
-pandas
-numpy
-matplotlib
-scipy
-textblob
-nltk
